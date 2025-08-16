@@ -1,11 +1,35 @@
 open Eio.Std
 
+module Read = Eio.Buf_read
+module Write = Eio.Buf_write
+
+let receive buf_reader = 
+  try 
+  while true do 
+    let msg = Read.line buf_reader in
+    Printf.printf "received: %s\n%!" msg;
+  done
+with ex -> (traceln "could not receive correctly: %a" Fmt.exn ex)
+
+let send flow = 
+  try 
+  while true do
+    let input = read_line () in
+    traceln "You typed: %s" input;
+    Eio.Flow.copy_string (input ^ "\n") flow
+  done
+with ex -> (traceln "could not send correctly: %a" Fmt.exn ex)
+
 let run_client ~net ~addr =
   Switch.run ~name:"client" @@ fun sw ->
-  Printf.printf "Client: connecting to server\n";
+    Printf.printf "Client: connecting to server\n";
+    
+  let server = Eio.Net.connect ~sw net addr in
+  let buf_reader = Read.of_flow server ~max_size:1000 in
+  Fiber.fork ~sw (fun () -> receive buf_reader);
+  Fiber.fork ~sw (fun () -> send server);
+  Fiber.await_cancel ()
   
-  let flow = Eio.Net.connect ~sw net addr in
-  Printf.printf "Client: received %S\n" (Eio.Flow.read_all flow)
 
 let main ~net ~addr = run_client ~net ~addr
 
