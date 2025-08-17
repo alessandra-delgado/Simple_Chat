@@ -8,9 +8,9 @@ let receive buf_reader =
   try 
   while true do 
     let msg = Read.line buf_reader in
-    Printf.printf "received: %s\n%!" msg;
+    Printf.printf "\r\027[Kreceived:%s\nsend a message> %!" msg;
   done
-with ex -> (traceln "could not receive correctly: %a" Fmt.exn ex)
+with ex -> (traceln "could not receive correctly: %a" Fmt.exn ex; exit 0)
 
 let send flow env = 
   traceln "SEND FIBER STARTED -----";
@@ -23,7 +23,7 @@ let send flow env =
       traceln "You typed: %s" input;
       Eio.Flow.copy_string (input ^ "\n") flow
     done
-  with ex -> (traceln "could not send correctly: %a" Fmt.exn ex)
+  with ex -> (traceln "could not send correctly: %a" Fmt.exn ex; exit 0)
 
 let run_client ~net ~addr ~env =
   Switch.run ~name:"client" @@ fun sw ->
@@ -32,8 +32,7 @@ let run_client ~net ~addr ~env =
   let server = Eio.Net.connect ~sw net addr in
   let buf_reader = Read.of_flow server ~max_size:1000 in
   Fiber.fork ~sw (fun () -> receive buf_reader);
-  Fiber.fork ~sw (fun () -> send server env);
-  Fiber.await_cancel ()
+  Fiber.fork ~sw (fun () -> send server env)
   
 
 let main ~net ~addr ~env= run_client ~net ~addr ~env
