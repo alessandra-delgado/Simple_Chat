@@ -17,18 +17,22 @@ let remove_client flow =
   Mutex.unlock client_mutex
 
 let broadcast msg sender = 
+  traceln "broadcasting: %s" msg; 
   Mutex.lock client_mutex;
-  let tmp = !clients in
-  Mutex.unlock client_mutex;
+  traceln "entered critical section";
   List.iter (fun f -> 
-    if f <> sender then 
+    if f != sender then 
       try
-        Eio.Flow.copy_string (msg ^ "\n") f
-      with _ -> remove_client f (*remove recipient if send fails*)
-  ) tmp
+        traceln "now copying msg to a recipient";
+        Eio.Flow.copy_string (msg ^ "\n") f;
+        traceln "done copying msg to a recipient"
+      with ex -> (traceln "error on broadcast: %a" Fmt.exn ex; remove_client f)(*remove recipient if send fails*)
+  ) !clients;
+  Mutex.unlock client_mutex;
+  traceln "left critical section"
 
 let handle_client flow _addr =
-  Printf.printf "Server: got connection from client\n%!"; (* %! forces a flush *)
+  traceln "Server: got connection from client";
   add_client flow;
   let buf_reader = Read.of_flow flow ~max_size:1000 in 
   (try
