@@ -64,5 +64,5 @@ let main ~net ~addr ~clock =
 let () =
   Eio_main.run @@ fun env -> main
     ~net:(Eio.Stdenv.net env)
-    ~addr:(`Tcp (Eio.Net.Ipaddr.V4.loopback, 8080))
+    ~addr:(`Tcp (Eio.Net.Ipaddr.V4.any, 8080))
     ~clock:(Eio.Stdenv.clock env)
